@@ -8,7 +8,7 @@ services:
     container_name: bluesense_pore_api
     restart: unless-stopped
     ports:
-      - "10.8.0.1:5025:8000"
+      - "10.8.0.1:5028:8000"
     environment:
       - PYTHONUNBUFFERED=1
     deploy:
