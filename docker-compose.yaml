@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  pore-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bluesense_pore_api
+    restart: unless-stopped
+    ports:
+      - "10.8.0.1:5025:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        limits:
+          memory: 3G
