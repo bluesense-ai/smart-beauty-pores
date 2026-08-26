@@ -108,7 +108,6 @@ if __name__ == "__main__":
     if not has_cuda:
         print("Warning, cuda is not supported on your device.")
 
-    # 2. Instantiate and move BOTH network and tensor to device
     net = Resnet18(pretrained=False).to(device)
     net.eval()
 
