@@ -49,7 +49,7 @@ class BasicBlock(nn.Module):
         out = self.relu(out)
         return out
 
-
+# Create a layer of basic blocks
 def create_layer_basic(in_chan, out_chan, bnum, stride=1):
     layers = [BasicBlock(in_chan, out_chan, stride=stride)]
     for i in range(bnum-1):
@@ -67,8 +67,8 @@ class Resnet18(nn.Module):
         self.layer3 = create_layer_basic(128, 256, bnum=2, stride=2)
         self.layer4 = create_layer_basic(256, 512, bnum=2, stride=2)
         
-        if pretrained:
-            self.init_weight()
+        # will raise when no internet acess
+        self.init_weight()
 
     def init_weight(self):
         # Modern non-deprecated model loader
@@ -79,6 +79,25 @@ class Resnet18(nn.Module):
                 continue
             self_state_dict.update({k: v})
         self.load_state_dict(self_state_dict)
+
+    def get_params(self):
+        wd_params, nowd_params = [], []
+
+        for name, module in self.named_modules():
+
+            if isinstance(module, (nn.Linear, nn.Conv2d)):
+
+                wd_params.append(module.weight)
+
+                if not module.bias is None:
+
+                    nowd_params.append(module.bias)
+
+            elif isinstance(module,  nn.BatchNorm2d):
+
+                nowd_params += list(module.parameters())
+
+        return wd_params, nowd_params 
 
 
 if __name__ == "__main__":
@@ -101,3 +120,8 @@ if __name__ == "__main__":
     print(f"feat8 size:  {feat8.size()}")
     print(f"feat16 size: {feat16.size()}")
     print(f"feat32 size: {feat32.size()}")
+
+    wd_params, nowd_params = net.get_params()
+
+    print(f"Wd Params Size: {len(wd_params)}")
+    print(f"Nowd Params Size: {len(nowd_params)}")
