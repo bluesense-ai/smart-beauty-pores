@@ -7,6 +7,8 @@ from core_models.resnet import Resnet18
 # from modules.bn import InPlaceABNSync as BatchNorm2d
 
 
+# Changes: no longer implicity calling .cuda
+
 class ConvBNReLU(nn.Module):
     def __init__(self, in_chan, out_chan, ks=3, stride=1, padding=1, *args, **kwargs):
         super(ConvBNReLU, self).__init__()
@@ -269,10 +271,18 @@ class BiSeNet(nn.Module):
 
 
 if __name__ == "__main__":
+    # fallback for non cuda devices
+    has_cuda = torch.cuda.is_available()
+
+    device = torch.device("cuda") if has_cuda  else torch.device("cpu")
+
+    if not has_cuda:
+        print("Warning, cuda is not supported on your device.")
+
     net = BiSeNet(19)
-    net.cuda()
+    net.to(device)
     net.eval()
-    in_ten = torch.randn(16, 3, 640, 480).cuda()
+    in_ten = torch.randn(16, 3, 640, 480).to(device)
     out, out16, out32 = net(in_ten)
     print(out.shape)
 
