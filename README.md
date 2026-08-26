@@ -24,6 +24,3 @@ image → mask_engine.py   (BiSeNet + beard U-Net) → safe skin mask
 | `wrinkle_engine.py` | Detects wrinkles to exclude from pore scoring — trained model |
 | `pore_engine.py` | Current pore scoring logic — **classical CV heuristic, not a trained model** |
 | `core_models/model.py`, `core_models/resnet.py` | BiSeNet + ResNet18 architecture (standard, unmodified) used by `mask_engine.py` |
-| `pore_model.py` | U-Net architecture for the trained pore model (replacement for the heuristic) |
-| `pore_dataset.py` | Dataset loader for training (expects Roboflow semantic-segmentation mask export format) |
-| `train_pore_model.py` | Training script — BCE+Dice loss, saves best checkpoint by validation Dice |
