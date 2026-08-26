@@ -6,10 +6,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.model_zoo as modelzoo
 
+# non-depracated solution
+from torch.hub import load_state_dict_from_url
+
 # from modules.bn import InPlaceABNSync as BatchNorm2d
 
 resnet18_url = 'https://download.pytorch.org/models/resnet18-5c106cde.pth'
-
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
@@ -54,56 +56,48 @@ def create_layer_basic(in_chan, out_chan, bnum, stride=1):
         layers.append(BasicBlock(out_chan, out_chan, stride=1))
     return nn.Sequential(*layers)
 
-
 class Resnet18(nn.Module):
-    def __init__(self):
+    def __init__(self, pretrained=True):
         super(Resnet18, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                               bias=False)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = create_layer_basic(64, 64, bnum=2, stride=1)
         self.layer2 = create_layer_basic(64, 128, bnum=2, stride=2)
         self.layer3 = create_layer_basic(128, 256, bnum=2, stride=2)
         self.layer4 = create_layer_basic(256, 512, bnum=2, stride=2)
-        self.init_weight()
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = F.relu(self.bn1(x))
-        x = self.maxpool(x)
-
-        x = self.layer1(x)
-        feat8 = self.layer2(x) # 1/8
-        feat16 = self.layer3(feat8) # 1/16
-        feat32 = self.layer4(feat16) # 1/32
-        return feat8, feat16, feat32
+        
+        if pretrained:
+            self.init_weight()
 
     def init_weight(self):
-        state_dict = modelzoo.load_url(resnet18_url)
+        # Modern non-deprecated model loader
+        state_dict = load_state_dict_from_url(resnet18_url, progress=True)
         self_state_dict = self.state_dict()
         for k, v in state_dict.items():
-            if 'fc' in k: continue
+            if 'fc' in k:
+                continue
             self_state_dict.update({k: v})
         self.load_state_dict(self_state_dict)
 
-    def get_params(self):
-        wd_params, nowd_params = [], []
-        for name, module in self.named_modules():
-            if isinstance(module, (nn.Linear, nn.Conv2d)):
-                wd_params.append(module.weight)
-                if not module.bias is None:
-                    nowd_params.append(module.bias)
-            elif isinstance(module,  nn.BatchNorm2d):
-                nowd_params += list(module.parameters())
-        return wd_params, nowd_params
-
 
 if __name__ == "__main__":
-    net = Resnet18()
-    x = torch.randn(16, 3, 224, 224)
-    out = net(x)
-    print(out[0].size())
-    print(out[1].size())
-    print(out[2].size())
-    net.get_params()
+    has_cuda = torch.cuda.is_available()
+
+    device = torch.device("cuda") if has_cuda else torch.device("cpu")
+
+    if not has_cuda:
+        print("Warning, cuda is not supported on your device.")
+
+    # 2. Instantiate and move BOTH network and tensor to device
+    net = Resnet18(pretrained=False).to(device)
+    net.eval()
+
+    x = torch.randn(16, 3, 224, 224, device=device)
+
+    with torch.no_grad():
+        feat8, feat16, feat32 = net(x)
+
+    print(f"feat8 size:  {feat8.size()}")
+    print(f"feat16 size: {feat16.size()}")
+    print(f"feat32 size: {feat32.size()}")
