@@ -67,8 +67,19 @@ class Resnet18(nn.Module):
         self.layer3 = create_layer_basic(128, 256, bnum=2, stride=2)
         self.layer4 = create_layer_basic(256, 512, bnum=2, stride=2)
         
-        # will raise when no internet acess
-        self.init_weight()
+        if pretrained:
+            self.init_weight()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = F.relu(self.bn1(x))
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        feat8 = self.layer2(x) # 1/8
+        feat16 = self.layer3(feat8) # 1/16
+        feat32 = self.layer4(feat16) # 1/32
+        return feat8, feat16, feat32
 
     def init_weight(self):
         # Modern non-deprecated model loader

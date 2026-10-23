@@ -1,0 +1,10 @@
+.git
+docker/
+Docker/
+Dockerfile
+docker-compose.yaml
+src/example_images/
+dataset/
+**/__pycache__/
+*.pyc
+.venv

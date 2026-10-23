@@ -7,9 +7,9 @@ from pydantic import BaseModel
 from typing import List
 
 # Import AI Engines
-from mask_engine import MaskingEngine
-from wrinkle_engine import WrinkleEngine
-from pore_engine import PoreEngine
+from engines.mask_engine import MaskingEngine
+from engines.wrinkle_engine import WrinkleEngine
+from engines.pore_engine import PoreEngine
 
 # ---------------------------------------------------------
 # 1. LOGGING CONFIGURATION (Crucial for Docker Environments)
