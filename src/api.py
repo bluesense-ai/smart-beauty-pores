@@ -72,6 +72,20 @@ def get_pore_status(score: float) -> str:
 # ---------------------------------------------------------
 # 5. API ENDPOINTS
 # ---------------------------------------------------------
+# The skin must span at least this many pixels for pores to show. Measured on 100 FFHQ faces: a
+# face whose skin spans ~400 px (the photo at 512) still ranks like the 1024 original (rank
+# agreement 0.77); at webcam size (~320 px) the score is noise (0.17, 99 of 100 faces at 100).
+MIN_SKIN_SPAN_PX = 400
+
+
+def skin_span(mask: np.ndarray) -> int:
+    """The larger side of the box around the safe skin, in pixels; 0 when there is none."""
+    ys, xs = np.nonzero(mask)
+    if ys.size == 0:
+        return 0
+    return int(max(ys.max() - ys.min() + 1, xs.max() - xs.min() + 1))
+
+
 @app.post("/analyze/pores", response_model=ScanResponse)
 async def analyze_pores_endpoint(file: List[UploadFile] = File(...)):
     """
@@ -85,6 +99,7 @@ async def analyze_pores_endpoint(file: List[UploadFile] = File(...)):
         files_to_process = file[:5]
         
         valid_scores = []
+        too_small = 0
         annotated_b64_list = []
         first_original_b64 = ""
 
@@ -113,15 +128,29 @@ async def analyze_pores_endpoint(file: List[UploadFile] = File(...)):
                 img_bgr, safe_mask, wrinkle_mask
             )
             
-            # Only append the score if valid skin was found (preventing fake 100s)
-            if np.count_nonzero(safe_mask) > 100:  
-                valid_scores.append(score)
-            else:
+            # Only append the score if valid skin was found (preventing fake 100s), and
+            # enough of it for pores to be visible at all.
+            if np.count_nonzero(safe_mask) <= 100:
                 logger.warning(f"Image {idx}: No valid skin detected. Score ignored.")
+            elif skin_span(safe_mask) < MIN_SKIN_SPAN_PX:
+                too_small += 1
+                logger.warning(f"Image {idx}: skin spans {skin_span(safe_mask)} px, too small for pores. Score ignored.")
+            else:
+                valid_scores.append(score)
 
             annotated_b64_list.append(encode_cv2_to_base64(report_img))
 
         # Check if any valid images were processed
+        if not valid_scores and too_small:
+            # Not an error: the face is there, but too small in the photo to see pores.
+            return ScanResponse(
+                success=False,
+                score=0.0,
+                interpretation="The face is too small in this photo to see pores. Move closer or use the rear camera.",
+                original_image=f"data:image/jpeg;base64,{first_original_b64}" if first_original_b64 else "",
+                heatmap_image="",
+                annotated_images=[],
+            )
         if not valid_scores:
             raise HTTPException(status_code=400, detail="No valid skin detected in the provided images.")
 
